@@ -1,92 +1,210 @@
-import requests, json, math, logging, scrapy, re, pandas as pd
+'''
+given district
+grab all restaurants in this district
+build all review urls
+'''
 
+#%%
+import requests
+import json
+import math
+import pandas as pd
+import os
+import random
+import time
+from typing import Dict
+
+from openrice_referentials import *
 # fake to become a browser
 headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.0; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0' }
 
-# grab the entire list of restuarants for HK on openrice, only focusing on the review links
-review_url     = []
-category_id    = []
-category_name  = []
-name           = []
-district       = []
-district_id    = []
-price_UI       = []
-address        = []
-latitude       = []
-longitude      = []
-review_count   = []
-score_smile    = []
-score_cry      = []
-bookmark_count = []
-score_overall  = []
+PROD = True
+TESTING = False
 
-for i in range(1,20):
+#%%
+# search key
+def skey(searchKey):
+    return searchKey.split('=')[0]
+
+# search value
+def sval(searchKey):
+    return searchKey.split('=')[1]
+
+'''
+def get_district_page_results(district: int,page_num: int):
+    link = f"https://www.openrice.com/api/pois?uiLang=en&uiCity=hongkong&page={page_num}&sortBy=Default&districtId={district}"
+    print(link)
+    try:
+        r = requests.get(link, headers = headers)
+        result = json.loads(r.text)
+        return result
+    except Exception as e:
+        print(f'an exception occured',str(e))
+        return None
+results = get_district_page_results(2008,1)
+'''
+
+def request_results_dict(
+    page_num: int,
+    districtId: int,
+    priceRangeId: int = None,
+) -> Dict:
+    # build json save path
+    filepath = f"C:/Users/alfred/Desktop/D_DRIVE/requests"
+    filepath = f"D:/LLM/cantollm/OpenRice/jsons/"
+    filepath += f"_districtId={districtId}"
+    filepath += f"_page={page_num}"
+    if priceRangeId is not None: filepath += f"_priceRangeId={priceRangeId}"
+    filepath += f".json"
+    #print(filepath)
+
+    # return from cache if it exists
+    if os.path.exists(filepath):
+        print(f'{filepath} exists') # prints this
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        return data
+        #print(f'{filepath} doesnt exist')
+
+    # build link
+    link = f"https://www.openrice.com/api/pois?uiLang=en&uiCity=hongkong&page={page_num}&sortBy=Default"
+    link += f"&districtId={districtId}"
+    if priceRangeId is not None: link += f"&priceRangeId={priceRangeId}"
+    #link = f"https://www.openrice.com/api/pois?uiLang=en&uiCity=hongkong&page={page_num}&sortBy=Default&districtId={districtId}"
+    print(link) # or this
+
+    if PROD or TESTING:
+        # do request
+        try:
+            # get and convert
+            r = requests.get(link, headers = headers) # get
+            result = json.loads(r.text) # convert
+            with open(filepath,'w',encoding='utf-8') as f: json.dump(result,f) # save
+            #print(f'\trequest success') # done
+            return result # return
+        except Exception as e:
+            print(f'\trequest failure',str(e)) # failure
+            return None
+# request_results_dict(0,2008)
+
+# given results, extract what we want into a dataframe
+def build_df_from_results_dict(results_dict: Dict[str,object]) -> pd.DataFrame:
+    # extract
+    restaurant_results = results_dict['searchResult']['paginationResult']['results']
+    filter_total = results_dict['searchResult']['paginationResult']['count']
+    max_returnable = results_dict['searchResult']['paginationResult']['totalReturnCount']
+
+    print(f"filter_total = {filter_total}, max_returnable = {max_returnable}, this_page = {results_dict['page']}, max_page = {results_dict['totalPage']}, page_results_count = {len(restaurant_results)}, page_rows = {results_dict['rows']}")
+
+    # stop if no result
+    if len(restaurant_results) == 0:
+        return None
     
-    r = requests.get("https://www.openrice.com/api/pois?uiLang=en&uiCity=hongkong&page="+ str(i) +"&&sortBy=Default&districtId=2008", headers = headers)
-    result = json.loads(r.text)
-    
-    if len(result['searchResult']['paginationResult']['results']) == 0:
-        break
+    # loop over restaurants
+    df = pd.DataFrame(
+        {
+            'name': [r['nameUI'].encode('utf-8') for r in restaurant_results],
+            'url': [r['urlUI'] for r in restaurant_results], # hyperlink of review
+            'review_url': [r['reviewUrlUI'] for r in restaurant_results], # hyperlink of review
+            'district': [r['district']['name'] for r in restaurant_results],
+            'district_id': [r['district']['districtId'] for r in restaurant_results],
+            'districtId': [r['district']['searchKey'] for r in restaurant_results],
+            'priceUI': [r['priceUI'] for r in restaurant_results],
+            'priceRangeId': [r['priceRangeId'] for r in restaurant_results],
+            'photoCount': [r['photoCount'] for r in restaurant_results], # count of reviews
+            'review_count': [r['reviewCount'] for r in restaurant_results], # count of reviews
+            'bookmark_count': [r['bookmarkedUserCount'] for r in restaurant_results], # how many users have bookmarked
+        }
+    )
+    return df
+# build_df_from_results_dict(results)
 
-    for j in range(len(result['searchResult']['paginationResult']['results'])):
-        review_url.append(result['searchResult']['paginationResult']['results'][j]['reviewUrlUI'])
-        name.append(result['searchResult']['paginationResult']['results'][j]['nameUI'].encode('utf-8'))
-        district.append(result['searchResult']['paginationResult']['results'][j]['district']['name'])
-        district_id.append(result['searchResult']['paginationResult']['results'][j]['district']['districtId'])
-        address.append(result['searchResult']['paginationResult']['results'][j]['address'])
-        price_UI.append(result['searchResult']['paginationResult']['results'][j]['priceUI'])
-        latitude.append(result['searchResult']['paginationResult']['results'][j]['mapLatitude'])
-        longitude.append(result['searchResult']['paginationResult']['results'][j]['mapLongitude'])
-        review_count.append(result['searchResult']['paginationResult']['results'][j]['reviewCount'])
-        score_smile.append(result['searchResult']['paginationResult']['results'][j]['scoreSmile'])
-        score_cry.append(result['searchResult']['paginationResult']['results'][j]['scoreCry'])
-        score_overall.append(result['searchResult']['paginationResult']['results'][j]['scoreOverall'])
-        bookmark_count.append(result['searchResult']['paginationResult']['results'][j]['bookmarkedUserCount'])
+# given df, save it
+def add_df_restauraunts_to_csv(
+    df: pd.DataFrame,
+    districtId: int,
+    priceRangeId: int = None,
+):
+    # build csv filepath
+    filepath = f"assets/restaurants/restaurants"
+    filepath += f"_districtId={districtId}"
+    if priceRangeId is not None: filepath += f"_priceRangeId={priceRangeId}"
+    filepath += f".csv"
 
-        holder_category = []
-        holder_name = []
-        for k in range(len(result['searchResult']['paginationResult']['results'][j]['categories'])):
-            holder_category.append(result['searchResult']['paginationResult']['results'][j]['categories'][k]['categoryId'])
-            holder_name.append(result['searchResult']['paginationResult']['results'][j]['categories'][k]['name'])
-        category_id.append(holder_category)
-        category_name.append(holder_name)
-    print("Scraping page: " + str(i))
-    
-    i += 1
+    with open(filepath, 'a') as f:
+        df.to_csv(filepath, mode='a', header=f.tell()==0,index=False)
 
-df = pd.DataFrame([name,review_url,district,district_id,category_id,category_name,price_UI,address,review_count,score_smile,score_cry,score_overall,bookmark_count,latitude,longitude]).transpose()
-col = ['Name','Review URL','District','District ID','Category ID','Category Name','Price UI','Address','Review Count','Smile','Cry','Overall Score','Bookmark Count','Latitude','longitude']
-df.columns = col
+def request_scrape_and_save_restaurants_one_page(
+    page_num: int,
+    districtId: int,
+    priceRangeId: int = None,
+) -> int :
+    if PROD or TESTING: time.sleep(random.uniform(2,5))
+    results_dict = request_results_dict(
+        page_num=page_num,
+        districtId=districtId,
+        priceRangeId=priceRangeId,
+    )
+    if results_dict is None:
+        return 0
 
-# Remove duplicates
-df_master = pd.read_csv("assets/data/master_restaurant_urls.csv")
+    df = build_df_from_results_dict(results_dict=results_dict)
+    if df is None:
+        return 0
 
-for i in df['Review URL']:
-    # https://stackoverflow.com/questions/30944577/check-if-string-is-in-a-pandas-dataframe
-    if df_master['Review URL'].str.contains(i).any():
-        # https://stackoverflow.com/questions/36684013/extract-column-value-based-on-another-column-pandas-dataframe
-        df_master.loc[df_master['Review URL'] == i, 'Smile'] = df.loc[df['Review URL'] == i, 'Smile'].iloc[0]
-        df_master.loc[df_master['Review URL'] == i, 'Cry'] = df.loc[df['Review URL'] == i, 'Cry'].iloc[0]
-        df_master.loc[df_master['Review URL'] == i, 'Overall Score'] = df.loc[df['Review URL'] == i, 'Overall Score'].iloc[0]
-        df_master.loc[df_master['Review URL'] == i, 'Bookmark Count'] = df.loc[df['Review URL'] == i, 'Bookmark Count'].iloc[0]
-        df_master.loc[df_master['Review URL'] == i, 'Review Count'] = df.loc[df['Review URL'] == i, 'Review Count'].iloc[0]
-        
-        # If there's duplicate, reduce the amount of duplicate reviews to scrape
-        df.loc[df['Review URL'] == i, 'Review Count'] = df.loc[df['Review URL'] == i, 'Review Count'].iloc[0] - df_master.loc[df_master['Review URL'] == i, 'Review Count'].iloc[0]
-    
-    else:
-        # https://stackoverflow.com/questions/39815646/pandas-append-dataframe-to-another-df
-        df_master = df_master.append(df.loc[df['Review URL'] == i],ignore_index=True)
+    add_df_restauraunts_to_csv(
+        df=df,
+        districtId=districtId,
+        priceRangeId=priceRangeId,
+    )
 
-df_master.to_csv('assets/data/master_restaurant_urls.csv',encoding='utf-8',index=False)
+    # restaurants_in_this_response
+    return len(df) 
 
-review_urls = []
 
-for k in range(len(df['Review Count'])):
-    num_of_review_pages = math.ceil(df['Review Count'][k] / 15.0)
+def request_scrape_and_save_restaurants_all_pages(
+    districtId: int,
+    priceRangeId: int = None,
+) -> int:
+    tot_results = 0
+    for page_num in range(1,20):
+        num_results = request_scrape_and_save_restaurants_one_page(
+            page_num=page_num,
+            districtId=districtId,
+            priceRangeId=priceRangeId
+        )
+        if num_results > 0:
+            tot_results += num_results
+        else:
+            break
 
-    for i in range(1,int(num_of_review_pages)):
-        review_urls.append('https://www.openrice.com'+ str(df['Review URL'][k]) + '?page='+ str( i ))
+    return tot_results
 
-# print review_urls
-print("There is {} urls to scrape".format(len(review_urls)))
+
+#%%
+
+if TESTING: INPUT_DF = districts_df[:5]
+if PROD: INPUT_DF = districts_df[5:]
+if PROD: INPUT_DF = districts_df[35:]
+
+# scrape for couple of rows
+for idx,district_row in INPUT_DF.iterrows():
+    district_searchkey = district_row['searchKey']
+    district_id = sval(district_searchkey)
+    district_name = district_row['name']
+    district_count = int(district_row['count'])
+    if district_id not in ['1999','2999','3999','4999']: # look at actual district, not mega-region
+        if district_count <= 250:
+            # single district gives 250 results, less than so can paginate without price
+            tot_results = request_scrape_and_save_restaurants_all_pages(districtId=district_id)
+            print(f'[{district_searchkey}] got {tot_results} of {district_count}')
+        else:
+            tot_results = 0
+            # single district gives 250 results, more than so need request with price as well
+            for pricerange in priceranges:
+                num_results = request_scrape_and_save_restaurants_all_pages(districtId=district_id,priceRangeId=sval(pricerange))
+                tot_results += num_results
+            print(f'[{district_searchkey}] got {tot_results} of {district_count}')
+
+#%%
+

@@ -1,0 +1,12 @@
+__pycache__
+_layouts
+.venv
+_config.yml
+data
+assets
+assets/css
+assets/pics
+assets/restaurants
+TRASH
+PITCHME.*
+scrape_reviews copy*
