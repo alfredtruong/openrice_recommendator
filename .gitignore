@@ -1,5 +1,6 @@
 __pycache__
-_TRASH
 .venv
-scrape_reviews copy*
 assets/
+TRASH/
+data/
+*.out
