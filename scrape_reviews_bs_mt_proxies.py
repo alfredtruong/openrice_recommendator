@@ -47,7 +47,6 @@ def worker(identifier, queue, user_agents, proxy_list):
     while True:
         # get url
         url = queue.get()
-        print('hi')
         if url is None:  # poison pill, exit the thread
             break
 
@@ -171,13 +170,11 @@ ALL_REVIEW_URLS_OUT = 'assets/all_review_urls.csv'
 OUTPUT_FILE = 'assets/scrapes/output_bs.jsonl'
 PROCESSED_URLS = 'assets/scrapes/output_bs_processed_urls.txt'
 SKIPPED_URLS = 'assets/scrapes/output_bs_skipped_urls.txt'
-
 TESTING = True
 TEST_MAX_URLS = 150
 WORKERS = 50
 WAIT_MIN_SHORT, WAIT_MAX_SHORT = 1, 5
 WAIT_MIN_LONG, WAIT_MAX_LONG = 30, 60
-
 #%%
 ################################# POPULATE QUEUE
 # Create a queue to hold the URLs to be scraped
@@ -207,12 +204,13 @@ for t in threads:
     t.join()
 '''
 #%%
+'''
 ################################# START
 # Write the results to a file
 for review in worker(1,queue, user_agents, proxy_list):
     print()
     write_to_file(review)
-
+'''
 # %%
 
 # (nlp_env) alfred@net-g14:~/code/OpenRice/openrice_recommendator$ nohup python scrape_reviews_bs_mt_proxies.py > scrape_reviews_bs_mt_proxies.out 2>&1 &
