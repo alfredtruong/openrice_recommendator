@@ -100,23 +100,27 @@ def build_df_from_results_dict(results_dict: Dict[str,object]) -> pd.DataFrame:
     if len(restaurant_results) == 0:
         return None
     
-    # loop over restaurants
-    df = pd.DataFrame(
-        {
-            'name': [r['nameUI'].encode('utf-8') for r in restaurant_results],
-            'url': [r['urlUI'] for r in restaurant_results], # hyperlink of review
-            'review_url': [r['reviewUrlUI'] for r in restaurant_results], # hyperlink of review
-            'district': [r['district']['name'] for r in restaurant_results],
-            'district_id': [r['district']['districtId'] for r in restaurant_results],
-            'districtId': [r['district']['searchKey'] for r in restaurant_results],
-            'priceUI': [r['priceUI'] for r in restaurant_results],
-            'priceRangeId': [r['priceRangeId'] for r in restaurant_results],
-            'photoCount': [r['photoCount'] for r in restaurant_results], # count of reviews
-            'review_count': [r['reviewCount'] for r in restaurant_results], # count of reviews
-            'bookmark_count': [r['bookmarkedUserCount'] for r in restaurant_results], # how many users have bookmarked
-        }
-    )
-    return df
+    try:
+        # loop over restaurants
+        df = pd.DataFrame(
+            {
+                'name': [r['nameUI'].encode('utf-8') for r in restaurant_results],
+                'url': [r['urlUI'] for r in restaurant_results], # hyperlink of review
+                'review_url': [r['reviewUrlUI'] for r in restaurant_results], # hyperlink of review
+                'district': [r['district']['name'] for r in restaurant_results],
+                'district_id': [r['district']['districtId'] for r in restaurant_results],
+                'districtId': [r['district']['searchKey'] for r in restaurant_results],
+                'priceUI': [r['priceUI'] for r in restaurant_results],
+                'priceRangeId': [r['priceRangeId'] for r in restaurant_results],
+                'photoCount': [r['photoCount'] for r in restaurant_results], # count of reviews
+                'review_count': [r['reviewCount'] for r in restaurant_results], # count of reviews
+                'bookmark_count': [r['bookmarkedUserCount'] for r in restaurant_results], # how many users have bookmarked
+            }
+        )
+        return df
+    except Exception as e:
+        print(f'[build_df_from_results_dict] {e}')
+        return None
 # build_df_from_results_dict(results)
 
 # given df, save it
@@ -139,7 +143,7 @@ def request_scrape_and_save_restaurants_one_page(
     districtId: int,
     priceRangeId: int = None,
 ) -> int :
-    if PROD or TESTING: time.sleep(random.uniform(2,5))
+    if PROD or TESTING: time.sleep(random.uniform(0.25,2))
     results_dict = request_results_dict(
         page_num=page_num,
         districtId=districtId,
@@ -180,12 +184,13 @@ def request_scrape_and_save_restaurants_all_pages(
 
     return tot_results
 
-
 #%%
 
 if TESTING: INPUT_DF = districts_df[:5]
 if PROD: INPUT_DF = districts_df[5:]
 if PROD: INPUT_DF = districts_df[35:]
+if PROD: INPUT_DF = districts_df[53:]
+if PROD: INPUT_DF = districts_df[61:]
 
 # scrape for couple of rows
 for idx,district_row in INPUT_DF.iterrows():
