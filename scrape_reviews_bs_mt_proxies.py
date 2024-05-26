@@ -167,14 +167,15 @@ proxy_list = proxies_df[(proxies_df['alive']) & (proxies_df['protocol'] == 'http
 #%%
 ################################# SETTINGS
 ALL_REVIEW_URLS_OUT = 'assets/all_review_urls.csv'
-OUTPUT_FILE = 'assets/scrapes/output_bs.jsonl'
-PROCESSED_URLS = 'assets/scrapes/output_bs_processed_urls.txt'
-SKIPPED_URLS = 'assets/scrapes/output_bs_skipped_urls.txt'
-TESTING = True
+OUTPUT_FILE = 'assets/scrapes/bs2/output_bs.jsonl'
+PROCESSED_URLS = 'assets/scrapes/bs2/output_bs_processed_urls.txt'
+SKIPPED_URLS = 'assets/scrapes/bs2/output_bs_skipped_urls.txt'
+TESTING = False
 TEST_MAX_URLS = 150
 WORKERS = 50
-WAIT_MIN_SHORT, WAIT_MAX_SHORT = 1, 5
-WAIT_MIN_LONG, WAIT_MAX_LONG = 30, 60
+WAIT_MIN_SHORT, WAIT_MAX_SHORT = 5, 10
+WAIT_MIN_LONG, WAIT_MAX_LONG = 60, 120
+
 #%%
 ################################# POPULATE QUEUE
 # Create a queue to hold the URLs to be scraped
@@ -185,7 +186,6 @@ review_urls = pd.read_csv(ALL_REVIEW_URLS_OUT,header=None)[0].to_list()
 if TESTING: review_urls = review_urls[:TEST_MAX_URLS] # cut short if testing or not
 for url in review_urls: queue.put(url) # populate actual jobs
 for _ in range(WORKERS): queue.put(None) # poison pills to the queue to signal threads to exit
-
 
 ################################# POPULATE THREADS
 # Create a list to hold the threads
@@ -203,15 +203,3 @@ for identifier in range(WORKERS):
 for t in threads:
     t.join()
 '''
-#%%
-'''
-################################# START
-# Write the results to a file
-for review in worker(1,queue, user_agents, proxy_list):
-    print()
-    write_to_file(review)
-'''
-# %%
-
-# (nlp_env) alfred@net-g14:~/code/OpenRice/openrice_recommendator$ nohup python scrape_reviews_bs_mt_proxies.py > scrape_reviews_bs_mt_proxies.out 2>&1 &
-# (nlp_env) alfred@net-g14:~/code/OpenRice/openrice_recommendator$ less scrape_reviews_bs_mt_proxies.out 
