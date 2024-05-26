@@ -1,6 +1,7 @@
 __pycache__
 .venv
-assets/
+assets/scrapes/
+assets/restaurants/
 TRASH/
 data/
 *.out
