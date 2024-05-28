@@ -108,55 +108,12 @@ class OpenriceSpider(scrapy.Spider):
             }
 
 
-    '''
-    def load_visited_urls(self):
-        try:
-            with open(VISITED_URLS_FILE, 'r') as f:
-                self.visited_urls = [line.strip() for line in f]
-        except FileNotFoundError:
-            pass
-    '''
-    '''
-    # concurrent
-    def save_visited_urls(self):
-        try:
-            with open(VISITED_URLS_FILE, 'a') as f:
-                portalocker.lock(f, portalocker.LOCK_EX) # Acquire an exclusive lock on the file
-                # Write the URLs to the file
-                for url in self.visited_urls:
-                    f.write(url + '\n')
-                portalocker.unlock(f) # Release the lock
-        except Exception as e:
-            self.logger.error(f"Error saving visited URLs: {e}")
-    '''
 c = CrawlerProcess({
     'USER_AGENT': 'Mozilla/5.0 (Windows NT 6.0; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0'
 })
 
 c.crawl(OpenriceSpider)
 c.start()
-'''
-# non-concurrent
-def save_visited_urls(self):
-    with open(VISITED_URLS_FILE, 'a') as f:
-        for url in self.visited_urls:
-            f.write(url + '\n')
-'''
-'''
-# concurrent
-def save_visited_urls(self):
-    try:
-        with open(VISITED_URLS_FILE, 'a') as f:
-            fcntl.flock(f, fcntl.LOCK_EX) # Acquire an exclusive lock on the file
-            # Write the URLs to the file
-            for url in self.visited_urls:
-                f.write(url + '\n')
-
-            fcntl.flock(f, fcntl.LOCK_UN) # Release the lock
-            
-    except Exception as e:
-        self.logger.error(f"Error saving visited URLs: {e}")
-'''
 #%%
 
 # (nlp_env) alfred@net-g14:~/code/OpenRice/openrice_recommendator$ nohup python scrape_reviews.py > scrape_reviews.out 2>&1 &
