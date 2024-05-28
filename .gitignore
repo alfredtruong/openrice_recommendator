@@ -2,6 +2,7 @@ __pycache__
 .venv
 assets/scrapes/
 assets/restaurants/
+assets/requests/
 TRASH/
 data/
 *.out
