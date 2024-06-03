@@ -11,6 +11,7 @@ import queue
 import random
 import time
 import threading
+from typing import List,Dict
 
 ################# FUNCTIONS
 def is_already_processed(file_path,url):
@@ -105,13 +106,13 @@ def worker(identifier, queue, user_agents, proxy_list):
         # Save the URL to the processed_urls file
         write_url_to_file(PROCESSED_URLS, url)
 
-def write_to_file(entry):
+def write_to_file(entry: Dict[str,str]):
     with lock:
         with open(OUTPUT_FILE, 'a', encoding='utf-8') as f:
             line = json.dumps(dict(entry), ensure_ascii=False) + "\n"
             f.write(line)
 
-def write_entrys_to_file(entrys):
+def write_entrys_to_file(entrys: List[Dict[str,str]]):
     with lock:
         with open(OUTPUT_FILE, 'a', encoding='utf-8') as f:
             for entry in entrys:
